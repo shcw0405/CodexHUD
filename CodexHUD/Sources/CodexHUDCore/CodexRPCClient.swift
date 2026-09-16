@@ -36,7 +36,7 @@ public struct CodexRPCUsageFetcher: CodexUsageFetching, Sendable {
 
     public init(
         executable: String = ProcessInfo.processInfo.environment["CODEX_CLI_PATH"] ?? "codex",
-        arguments: [String] = ["-s", "read-only", "-a", "untrusted", "app-server"],
+        arguments: [String] = ["-s", "read-only", "-a", "never", "app-server"],
         environment: [String: String] = ProcessInfo.processInfo.environment,
         initializeTimeout: TimeInterval = 8,
         requestTimeout: TimeInterval = 3)
@@ -80,7 +80,7 @@ public actor CodexRPCConnectionFetcher: CodexUsageFetching {
 
     public init(
         executable: String = ProcessInfo.processInfo.environment["CODEX_CLI_PATH"] ?? "codex",
-        arguments: [String] = ["-s", "read-only", "-a", "untrusted", "app-server"],
+        arguments: [String] = ["-s", "read-only", "-a", "never", "app-server"],
         environment: [String: String] = ProcessInfo.processInfo.environment,
         initializeTimeout: TimeInterval = 8,
         requestTimeout: TimeInterval = 3)

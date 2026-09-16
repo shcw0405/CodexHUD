@@ -8,7 +8,7 @@ import time
 
 def main() -> int:
     process = subprocess.Popen(
-        ["codex", "-s", "read-only", "-a", "untrusted", "app-server"],
+        ["codex", "-s", "read-only", "-a", "never", "app-server"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -33,6 +33,9 @@ def main() -> int:
             for key, _ in events:
                 line = key.fileobj.readline()
                 if not line:
+                    selector.unregister(key.fileobj)
+                    if not selector.get_map():
+                        raise RuntimeError(f"app-server exited; stderr={stderr_tail}")
                     continue
                 if key.data == "stderr":
                     stderr_tail.append(line.strip())
@@ -40,6 +43,8 @@ def main() -> int:
                     continue
                 message = json.loads(line)
                 if message.get("id") == response_id:
+                    if "error" in message:
+                        raise RuntimeError(f"RPC failed: {message['error']}")
                     return message
         raise TimeoutError(f"timed out waiting for id {response_id}; stderr={stderr_tail}")
 

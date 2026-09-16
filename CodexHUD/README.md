@@ -9,7 +9,7 @@ For the main project overview and screenshots, see the repository root `README.m
 CodexHUD uses the local Codex CLI app-server JSON-RPC interface:
 
 ```sh
-codex -s read-only -a untrusted app-server
+codex -s read-only -a never app-server
 ```
 
 It calls `account/rateLimits/read` for the 5-hour and weekly windows, and `account/read` for account labels when available. It does not use mock usage data, browser cookies, prompt logs, or session files.

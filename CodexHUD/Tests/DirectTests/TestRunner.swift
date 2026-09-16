@@ -2,7 +2,7 @@ import Foundation
 
 @main
 struct TestRunner {
-    static func main() throws {
+    static func main() async throws {
         try self.testCompactTitleShowsUsedPrimaryAndWeeklyPercentages()
         try self.testFullTitleCanShowRemainingPercentages()
         try self.testMinimalTitleUsesPrimaryWindow()
@@ -15,6 +15,20 @@ struct TestRunner {
         try self.testResetDescriptionFormatsEachWindow()
         try self.testMapsCodexAppServerRateLimitsIntoUsageSnapshot()
         try self.testRPCPayloadIncludesExpectedMethod()
+        if CommandLine.arguments.contains("--live") {
+            let fetcher = CodexRPCConnectionFetcher()
+            do {
+                for _ in 0..<2 {
+                    let snapshot = try await fetcher.fetchSnapshot()
+                    try expect(snapshot.primary != nil && snapshot.secondary != nil, "live usage windows")
+                    print(CodexUsageFormatter.title(for: .fresh(snapshot), settings: CodexHUDSettings()))
+                }
+                await fetcher.disconnect()
+            } catch {
+                await fetcher.disconnect()
+                throw error
+            }
+        }
         print("CodexHUD direct tests passed")
     }
 
