@@ -15,6 +15,15 @@ struct TestRunner {
         try self.testResetDescriptionFormatsEachWindow()
         try self.testMapsCodexAppServerRateLimitsIntoUsageSnapshot()
         try self.testRPCPayloadIncludesExpectedMethod()
+        let stalled = CodexRPCUsageFetcher(executable: "/bin/sleep", arguments: ["5"], initializeTimeout: 0.05)
+        let started = Date()
+        do {
+            _ = try await stalled.fetchSnapshot()
+            throw TestFailure("unresponsive process must time out")
+        } catch let error as CodexRPCError {
+            try expect(error == .timeout("initialize"), "timeout must not become a stdout decoding error")
+            try expect(Date().timeIntervalSince(started) < 2, "timeout must cancel the reader promptly")
+        }
         if CommandLine.arguments.contains("--live") {
             let fetcher = CodexRPCConnectionFetcher()
             do {
@@ -59,7 +68,7 @@ struct TestRunner {
     private static func testErrorAndStaleTitlesAreExplicit() throws {
         let settings = CodexHUDSettings(displayMode: .compact, percentBasis: .used, refreshInterval: .thirtySeconds)
         try expect(CodexUsageFormatter.title(for: .failed("boom"), settings: settings) == "Cdx ?", "error title")
-        try expect(CodexUsageFormatter.title(for: .stale, settings: settings) == "Cdx stale", "stale title")
+        try expect(CodexUsageFormatter.title(for: .stale, settings: settings) == "Cdx 过期", "stale title")
     }
 
     private static func testIdleAndLoadingTitlesShowEllipsis() throws {
@@ -116,13 +125,13 @@ struct TestRunner {
 
     private static func testResetDescriptionFormatsEachWindow() throws {
         let now = Date(timeIntervalSince1970: 1_000_000)
-        try expect(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(-60), now: now) == "reset now", "reset now")
-        try expect(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(5 * 60), now: now) == "reset in 5m", "reset minutes")
-        try expect(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(90 * 60), now: now) == "reset in 1h30m", "reset hours and minutes")
-        try expect(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(2 * 3600), now: now) == "reset in 2h", "reset whole hours")
-        try expect(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(26 * 3600), now: now) == "reset in 1d2h", "reset days and hours")
-        try expect(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(3 * 86_400), now: now) == "reset in 3d", "reset whole days")
-        try expect(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(8 * 86_400), now: now).hasPrefix("reset on "), "reset weekday")
+        try expect(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(-60), now: now) == "等待重置", "等待重置")
+        try expect(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(5 * 60), now: now) == "5分后重置", "reset minutes")
+        try expect(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(90 * 60), now: now) == "1时30分后重置", "reset hours and minutes")
+        try expect(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(2 * 3600), now: now) == "2时后重置", "reset whole hours")
+        try expect(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(26 * 3600), now: now) == "1天2时后重置", "reset days and hours")
+        try expect(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(3 * 86_400), now: now) == "3天后重置", "reset whole days")
+        try expect(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(8 * 86_400), now: now).hasSuffix("重置"), "reset weekday")
     }
 
     private static func testMapsCodexAppServerRateLimitsIntoUsageSnapshot() throws {

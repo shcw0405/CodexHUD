@@ -14,15 +14,15 @@ public enum CodexRPCError: LocalizedError, Equatable {
     public var errorDescription: String? {
         switch self {
         case .codexNotFound:
-            return "Codex CLI was not found on PATH."
+            return "未找到 Codex CLI，请先安装并登录。"
         case let .startFailed(message):
-            return "Codex app-server failed to start: \(message)"
+            return "Codex 服务启动失败：\(message)"
         case let .requestFailed(message):
-            return "Codex RPC request failed: \(message)"
+            return "Codex 用量请求失败：\(message)"
         case let .malformed(message):
-            return "Codex RPC returned invalid data: \(message)"
+            return "Codex 返回的数据无法解析：\(message)"
         case let .timeout(method):
-            return "Codex RPC timed out waiting for \(method)."
+            return "Codex 请求超时：\(method)，请稍后刷新。"
         }
     }
 }
@@ -39,7 +39,7 @@ public struct CodexRPCUsageFetcher: CodexUsageFetching, Sendable {
         arguments: [String] = ["-s", "read-only", "-a", "never", "app-server"],
         environment: [String: String] = ProcessInfo.processInfo.environment,
         initializeTimeout: TimeInterval = 8,
-        requestTimeout: TimeInterval = 3)
+        requestTimeout: TimeInterval = 15)
     {
         self.executable = executable
         self.arguments = arguments
@@ -83,7 +83,7 @@ public actor CodexRPCConnectionFetcher: CodexUsageFetching {
         arguments: [String] = ["-s", "read-only", "-a", "never", "app-server"],
         environment: [String: String] = ProcessInfo.processInfo.environment,
         initializeTimeout: TimeInterval = 8,
-        requestTimeout: TimeInterval = 3)
+        requestTimeout: TimeInterval = 15)
     {
         self.executable = executable
         self.arguments = arguments
@@ -331,7 +331,6 @@ final class CodexRPCClient {
             }
             group.addTask {
                 try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-                self.shutdown()
                 throw self.timeoutFailure(method: method)
             }
 

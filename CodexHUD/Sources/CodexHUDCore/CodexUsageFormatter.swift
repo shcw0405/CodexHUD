@@ -13,8 +13,8 @@ public enum CodexUsageFormatter {
 
     private static let weekdayFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "EEE"
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "M月d日"
         return formatter
     }()
 
@@ -27,7 +27,7 @@ public enum CodexUsageFormatter {
         case .idle, .loading:
             return "Cdx ..."
         case .stale:
-            return "Cdx stale"
+            return "Cdx 过期"
         case .failed:
             return "Cdx ?"
         case let .fresh(snapshot):
@@ -45,7 +45,7 @@ public enum CodexUsageFormatter {
             return "\(label)     ? \(self.basisLabel(for: basis))"
         }
         let percent = self.percentText(for: window, basis: basis)
-        let reset = window.resetsAt.map { self.resetDescription(from: $0, now: now) } ?? "reset unknown"
+        let reset = window.resetsAt.map { self.resetDescription(from: $0, now: now) } ?? "重置时间未知"
         return "\(label)     \(percent) \(self.basisLabel(for: basis))   \(reset)"
     }
 
@@ -56,27 +56,27 @@ public enum CodexUsageFormatter {
     public static func resetDescription(from resetsAt: Date, now: Date = Date()) -> String {
         let seconds = Int(resetsAt.timeIntervalSince(now).rounded())
         if seconds <= 0 {
-            return "reset now"
+            return "等待重置"
         }
         let minutes = max(1, seconds / 60)
         if minutes < 60 {
-            return "reset in \(minutes)m"
+            return "\(minutes)分后重置"
         }
         let hours = minutes / 60
         let remainingMinutes = minutes % 60
         if hours < 24 {
             return remainingMinutes == 0
-                ? "reset in \(hours)h"
-                : "reset in \(hours)h\(remainingMinutes)m"
+                ? "\(hours)时后重置"
+                : "\(hours)时\(remainingMinutes)分后重置"
         }
         let days = hours / 24
         let remainingHours = hours % 24
         if days < 7 {
             return remainingHours == 0
-                ? "reset in \(days)d"
-                : "reset in \(days)d\(remainingHours)h"
+                ? "\(days)天后重置"
+                : "\(days)天\(remainingHours)时后重置"
         }
-        return "reset on \(self.weekdayFormatter.string(from: resetsAt))"
+        return "\(self.weekdayFormatter.string(from: resetsAt))重置"
     }
 
     private static func title(for snapshot: CodexUsageSnapshot, settings: CodexHUDSettings) -> String {
@@ -111,7 +111,7 @@ public enum CodexUsageFormatter {
         "\(self.percentValue(for: window, basis: basis))%"
     }
 
-    private static func percentValue(for window: CodexUsageWindow, basis: PercentBasis) -> Int {
+    public static func percentValue(for window: CodexUsageWindow, basis: PercentBasis) -> Int {
         let used = min(100, max(0, window.usedPercent))
         let value: Double = switch basis {
         case .used: used
@@ -123,9 +123,9 @@ public enum CodexUsageFormatter {
     private static func basisLabel(for basis: PercentBasis) -> String {
         switch basis {
         case .used:
-            return "used"
+            return "已用"
         case .remaining:
-            return "remaining"
+            return "剩余"
         }
     }
 

@@ -7,9 +7,9 @@ public enum MenuBarDisplayMode: String, CaseIterable, Codable, Equatable {
 
     public var title: String {
         switch self {
-        case .full: "Full"
-        case .compact: "Compact"
-        case .minimal: "Minimal"
+        case .full: "完整"
+        case .compact: "紧凑"
+        case .minimal: "极简"
         }
     }
 }
@@ -20,8 +20,8 @@ public enum PercentBasis: String, CaseIterable, Codable, Equatable {
 
     public var title: String {
         switch self {
-        case .used: "Used"
-        case .remaining: "Remaining"
+        case .used: "已用"
+        case .remaining: "剩余"
         }
     }
 }
@@ -33,9 +33,9 @@ public enum FloatingUsageDisplay: String, CaseIterable, Codable, Equatable {
 
     public var title: String {
         switch self {
-        case .fiveHour: "5-hour"
-        case .weekly: "Weekly"
-        case .both: "Both"
+        case .fiveHour: "5 小时"
+        case .weekly: "每周"
+        case .both: "全部"
         }
     }
 }
@@ -47,9 +47,9 @@ public enum FloatingWindowSize: String, CaseIterable, Codable, Equatable {
 
     public var title: String {
         switch self {
-        case .small: "Small"
-        case .medium: "Medium"
-        case .large: "Large"
+        case .small: "小"
+        case .medium: "中"
+        case .large: "大"
         }
     }
 }
@@ -61,9 +61,9 @@ public enum FloatingTone: String, CaseIterable, Codable, Equatable {
 
     public var title: String {
         switch self {
-        case .light: "Light"
-        case .medium: "Medium"
-        case .dark: "Dark"
+        case .light: "低"
+        case .medium: "中"
+        case .dark: "高"
         }
     }
 }
@@ -76,10 +76,10 @@ public enum RefreshInterval: Int, CaseIterable, Codable, Equatable {
 
     public var title: String {
         switch self {
-        case .tenSeconds: "10 seconds"
-        case .thirtySeconds: "30 seconds"
-        case .sixtySeconds: "60 seconds"
-        case .fiveMinutes: "5 minutes"
+        case .tenSeconds: "10 秒"
+        case .thirtySeconds: "30 秒"
+        case .sixtySeconds: "60 秒"
+        case .fiveMinutes: "5 分钟"
         }
     }
 }

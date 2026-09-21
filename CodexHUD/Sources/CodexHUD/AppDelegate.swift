@@ -12,7 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var lastError: String?
     private var refreshTimer: Timer?
     private var isRefreshing = false
-    private var floatingDismissed = false
+    private var floatingDismissed = UserDefaults.standard.bool(forKey: "floatingDismissed")
 
     /// Tags identifying which setting a segmented control drives.
     private enum SettingTag {
@@ -40,12 +40,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.statusMenu.delegate = self
         self.statusMenu.autoenablesItems = false
         self.statusItem.menu = self.statusMenu
+        self.floatingPanel.setMenu(self.statusMenu)
 
         self.floatingPanel.onUserClose = { [weak self] in
             self?.floatingDismissed = true
+            UserDefaults.standard.set(true, forKey: "floatingDismissed")
             self?.refreshStatusViews()
         }
-        self.floatingPanel.show()
         self.refreshStatusViews()
         self.scheduleRefreshTimer()
         self.refreshNow(nil)
@@ -107,6 +108,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func toggleFloatingPanel(_ sender: Any?) {
         self.floatingDismissed.toggle()
+        UserDefaults.standard.set(self.floatingDismissed, forKey: "floatingDismissed")
         self.refreshStatusViews()
     }
 
@@ -158,12 +160,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func scheduleRefreshTimer() {
         self.refreshTimer?.invalidate()
-        self.refreshTimer = Timer.scheduledTimer(
-            withTimeInterval: TimeInterval(self.settings.refreshInterval.rawValue),
+        self.refreshTimer = Timer(
+            timeInterval: TimeInterval(self.settings.refreshInterval.rawValue),
             repeats: true)
         { [weak self] _ in
             self?.refreshNow(nil)
         }
+        if let timer = self.refreshTimer { RunLoop.main.add(timer, forMode: .common) }
     }
 
     private func updateFloatingPanel(state: CodexUsageState) {
@@ -188,13 +191,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if let snapshot = self.snapshot {
                 return self.entries(for: snapshot, stale: true)
             }
-            return [FloatingUsageEntry(label: "Cdx", value: "stale", suffix: "", subtitle: "")]
+            return [FloatingUsageEntry(label: "Cdx", value: "?", suffix: "", subtitle: "数据已过期")]
         case .loading:
-            return [FloatingUsageEntry(label: "5H", value: "...", suffix: "", subtitle: "loading")]
+            return [FloatingUsageEntry(label: "5H", value: "...", suffix: "", subtitle: "刷新中")]
         case .failed:
-            return [FloatingUsageEntry(label: "Cdx", value: "?", suffix: "", subtitle: "error")]
+            return [FloatingUsageEntry(label: "Cdx", value: "?", suffix: "", subtitle: "读取失败")]
         case .idle:
-            return [FloatingUsageEntry(label: "5H", value: "...", suffix: "", subtitle: "waiting")]
+            return [FloatingUsageEntry(label: "5H", value: "...", suffix: "", subtitle: "等待刷新")]
         }
     }
 
@@ -214,18 +217,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func entry(label: String, window: CodexUsageWindow?, stale: Bool) -> FloatingUsageEntry {
         guard let window else {
-            return FloatingUsageEntry(label: label, value: "?", suffix: "", subtitle: "left")
+            return FloatingUsageEntry(label: label, value: "?", suffix: "", subtitle: "暂无数据")
         }
-        let remaining = self.remainingPercent(for: window)
+        let remaining = CodexUsageFormatter.percentValue(for: window, basis: self.settings.percentBasis)
         let subtitle = stale
-            ? "stale"
-            : (window.resetsAt.map { CodexUsageFormatter.resetDescription(from: $0) } ?? "left")
-        return FloatingUsageEntry(label: label, value: String(remaining), suffix: "%", subtitle: subtitle)
-    }
-
-    private func remainingPercent(for window: CodexUsageWindow) -> Int {
-        let used = min(100, max(0, window.usedPercent))
-        return Int((100 - used).rounded())
+            ? "数据已过期"
+            : (window.resetsAt.map { CodexUsageFormatter.resetDescription(from: $0) } ?? "重置时间未知")
+        return FloatingUsageEntry(label: "\(label) \(self.settings.percentBasis.title)", value: String(remaining), suffix: "%", subtitle: subtitle)
     }
 
     private func populateMenu(_ menu: NSMenu, state: CodexUsageState) {
@@ -234,51 +232,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Settings first as inline segmented controls. Picking an option keeps the
         // menu open (custom-view items don't dismiss it), so the change lands live.
         menu.addItem(self.segmentRow(
-            title: "Menu Bar Style",
+            title: "菜单栏样式",
             labels: MenuBarDisplayMode.allCases.map(\.title),
             selectedIndex: MenuBarDisplayMode.allCases.firstIndex(of: self.settings.displayMode) ?? 0,
             tag: SettingTag.menuBarStyle))
         menu.addItem(self.segmentRow(
-            title: "Percentage",
+            title: "用量显示",
             labels: PercentBasis.allCases.map(\.title),
             selectedIndex: PercentBasis.allCases.firstIndex(of: self.settings.percentBasis) ?? 0,
             tag: SettingTag.percentage))
         menu.addItem(self.segmentRow(
-            title: "Refresh Interval",
-            labels: ["10s", "30s", "60s", "5m"],
+            title: "刷新间隔",
+            labels: RefreshInterval.allCases.map(\.title),
             selectedIndex: RefreshInterval.allCases.firstIndex(of: self.settings.refreshInterval) ?? 0,
             tag: SettingTag.refreshInterval))
 
         menu.addItem(NSMenuItem.separator())
         menu.addItem(self.segmentRow(
-            title: "Floating Data",
+            title: "悬浮窗内容",
             labels: FloatingUsageDisplay.allCases.map(\.title),
             selectedIndex: FloatingUsageDisplay.allCases.firstIndex(of: self.settings.floatingDisplay) ?? 0,
             tag: SettingTag.floatingData))
         menu.addItem(self.segmentRow(
-            title: "Window Size",
+            title: "悬浮窗大小",
             labels: FloatingWindowSize.allCases.map(\.title),
             selectedIndex: FloatingWindowSize.allCases.firstIndex(of: self.settings.floatingSize) ?? 0,
             tag: SettingTag.windowSize))
         menu.addItem(self.segmentRow(
-            title: "Background",
+            title: "背景深浅",
             labels: FloatingTone.allCases.map(\.title),
             selectedIndex: FloatingTone.allCases.firstIndex(of: self.settings.backgroundTone) ?? 0,
             tag: SettingTag.background))
         menu.addItem(self.segmentRow(
-            title: "Text Opacity",
+            title: "文字亮度",
             labels: FloatingTone.allCases.map(\.title),
             selectedIndex: FloatingTone.allCases.firstIndex(of: self.settings.textTone) ?? 0,
             tag: SettingTag.textOpacity))
 
         menu.addItem(NSMenuItem.separator())
-        let refresh = NSMenuItem(title: "Refresh Now", action: #selector(self.refreshNow(_:)), keyEquivalent: "r")
+        let refresh = NSMenuItem(title: self.isRefreshing ? "正在刷新…" : "立即刷新", action: #selector(self.refreshNow(_:)), keyEquivalent: "r")
         refresh.target = self
         refresh.isEnabled = !self.isRefreshing
         menu.addItem(refresh)
 
         let toggle = NSMenuItem(
-            title: self.floatingDismissed ? "Show Floating Window" : "Hide Floating Window",
+            title: self.floatingDismissed ? "显示悬浮窗" : "隐藏悬浮窗",
             action: #selector(self.toggleFloatingPanel(_:)),
             keyEquivalent: "")
         toggle.target = self
@@ -289,7 +287,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.addStatusRows(to: menu, state: state)
 
         menu.addItem(NSMenuItem.separator())
-        let quit = NSMenuItem(title: "Quit CodexHUD", action: #selector(self.quit(_:)), keyEquivalent: "q")
+        let quit = NSMenuItem(title: "退出 CodexHUD", action: #selector(self.quit(_:)), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
     }
@@ -299,34 +297,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case let .fresh(snapshot):
             self.addSnapshotRows(to: menu, snapshot: snapshot)
         case .stale:
-            menu.addItem(self.disabledItem("⚠ Stale data"))
+            menu.addItem(self.disabledItem("⚠ 数据已过期"))
+            if let lastError { menu.addItem(self.disabledItem("刷新失败：\(lastError)")) }
             if let snapshot = self.snapshot {
                 self.addSnapshotRows(to: menu, snapshot: snapshot)
             }
         case let .failed(message):
-            menu.addItem(self.disabledItem("Unable to fetch usage"))
+            menu.addItem(self.disabledItem("无法读取用量"))
             menu.addItem(self.disabledItem(message))
         case .loading, .idle:
-            menu.addItem(self.disabledItem("Waiting for first refresh"))
+            menu.addItem(self.disabledItem("等待首次刷新"))
         }
     }
 
     private func addSnapshotRows(to menu: NSMenu, snapshot: CodexUsageSnapshot) {
         menu.addItem(self.disabledItem(CodexUsageFormatter.detailLine(
-            label: "5-hour",
+            label: "5 小时",
             window: snapshot.primary,
             basis: self.settings.percentBasis)))
         menu.addItem(self.disabledItem(CodexUsageFormatter.detailLine(
-            label: "Weekly",
+            label: "每周",
             window: snapshot.secondary,
             basis: self.settings.percentBasis)))
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(self.disabledItem("Updated    \(CodexUsageFormatter.updatedTime(snapshot.updatedAt))"))
+        menu.addItem(self.disabledItem("更新时间    \(CodexUsageFormatter.updatedTime(snapshot.updatedAt))"))
         if let email = snapshot.accountEmail {
-            menu.addItem(self.disabledItem("Account    \(email)"))
+            menu.addItem(self.disabledItem("账号    \(email)"))
         }
         if let plan = snapshot.planType {
-            menu.addItem(self.disabledItem("Plan       \(plan)"))
+            menu.addItem(self.disabledItem("套餐    \(plan)"))
         }
     }
 
@@ -335,7 +334,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// dismiss the menu.
     private func segmentRow(title: String, labels: [String], selectedIndex: Int, tag: Int) -> NSMenuItem {
         let leftPad: CGFloat = 14
-        let labelWidth: CGFloat = 112
+        let labelWidth: CGFloat = 88
         let gap: CGFloat = 10
         let rightPad: CGFloat = 14
         let rowHeight: CGFloat = 30
@@ -352,7 +351,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if selectedIndex >= 0, selectedIndex < labels.count {
             segmented.selectedSegment = selectedIndex
         }
-        let segSize = segmented.frame.size
+        let segSize = NSSize(width: 204, height: segmented.frame.height)
 
         let totalWidth = leftPad + labelWidth + gap + segSize.width + rightPad
         let container = NSView(frame: NSRect(x: 0, y: 0, width: totalWidth, height: rowHeight))

@@ -48,7 +48,7 @@ final class CodexUsageFormatterTests: XCTestCase {
         let settings = CodexHUDSettings(displayMode: .compact, percentBasis: .used, refreshInterval: .thirtySeconds)
 
         XCTAssertEqual(CodexUsageFormatter.title(for: .failed("boom"), settings: settings, now: Date()), "Cdx ?")
-        XCTAssertEqual(CodexUsageFormatter.title(for: .stale, settings: settings, now: Date()), "Cdx stale")
+        XCTAssertEqual(CodexUsageFormatter.title(for: .stale, settings: settings, now: Date()), "Cdx 过期")
     }
 
     func testIdleAndLoadingTitlesShowEllipsis() {
@@ -103,13 +103,13 @@ final class CodexUsageFormatterTests: XCTestCase {
 
     func testResetDescriptionFormatsEachWindow() {
         let now = Date(timeIntervalSince1970: 1_000_000)
-        XCTAssertEqual(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(-60), now: now), "reset now")
-        XCTAssertEqual(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(5 * 60), now: now), "reset in 5m")
-        XCTAssertEqual(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(90 * 60), now: now), "reset in 1h30m")
-        XCTAssertEqual(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(2 * 3600), now: now), "reset in 2h")
-        XCTAssertEqual(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(26 * 3600), now: now), "reset in 1d2h")
-        XCTAssertEqual(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(3 * 86_400), now: now), "reset in 3d")
-        XCTAssertTrue(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(8 * 86_400), now: now).hasPrefix("reset on "))
+        XCTAssertEqual(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(-60), now: now), "等待重置")
+        XCTAssertEqual(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(5 * 60), now: now), "5分后重置")
+        XCTAssertEqual(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(90 * 60), now: now), "1时30分后重置")
+        XCTAssertEqual(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(2 * 3600), now: now), "2时后重置")
+        XCTAssertEqual(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(26 * 3600), now: now), "1天2时后重置")
+        XCTAssertEqual(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(3 * 86_400), now: now), "3天后重置")
+        XCTAssertTrue(CodexUsageFormatter.resetDescription(from: now.addingTimeInterval(8 * 86_400), now: now).hasSuffix("重置"))
     }
 
     private static func snapshot(primaryUsed: Double, secondaryUsed: Double) -> CodexUsageSnapshot {
